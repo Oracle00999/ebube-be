@@ -102,13 +102,6 @@ const requestDeposit = async (req, res, next) => {
       },
     });
 
-    // Notify admins about new deposit request (fire-and-forget so user request isn't blocked by SMTP issues)
-    notifyAdmins("depositRequest", {
-      user: req.user,
-      transaction: transaction.getUserDetails(),
-    }).catch((emailError) => {
-      console.error("Failed to send deposit notification:", emailError);
-    });
     successResponse(
       res,
       {
@@ -120,6 +113,14 @@ const requestDeposit = async (req, res, next) => {
       "Deposit request submitted",
       201,
     );
+
+    // Send admin notification after response (fire-and-forget)
+    notifyAdmins("depositRequest", {
+      user: req.user,
+      transaction: transaction.getUserDetails(),
+    }).catch((emailError) => {
+      console.error("Failed to send deposit notification:", emailError);
+    });
   } catch (error) {
     next(error);
   }
@@ -172,13 +173,6 @@ const requestWithdrawal = async (req, res, next) => {
       },
     });
 
-    // Notify admins about new withdrawal request (fire-and-forget so user request isn't blocked by SMTP issues)
-    notifyAdmins("withdrawalRequest", {
-      user: req.user,
-      transaction: transaction.getUserDetails(),
-    }).catch((emailError) => {
-      console.error("Failed to send withdrawal notification:", emailError);
-    });
     successResponse(
       res,
       {
@@ -190,6 +184,14 @@ const requestWithdrawal = async (req, res, next) => {
       "Withdrawal request submitted",
       201,
     );
+
+    // Send admin notification after response (fire-and-forget)
+    notifyAdmins("withdrawalRequest", {
+      user: req.user,
+      transaction: transaction.getUserDetails(),
+    }).catch((emailError) => {
+      console.error("Failed to send withdrawal notification:", emailError);
+    });
   } catch (error) {
     next(error);
   }

