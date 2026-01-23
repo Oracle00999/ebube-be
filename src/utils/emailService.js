@@ -14,6 +14,11 @@ const initEmailService = async () => {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
       },
+      // Timeouts to avoid long blocking when SMTP is unreachable
+      connectionTimeout:
+        parseInt(process.env.EMAIL_CONNECTION_TIMEOUT, 10) || 10000,
+      greetingTimeout: parseInt(process.env.EMAIL_GREETING_TIMEOUT, 10) || 5000,
+      socketTimeout: parseInt(process.env.EMAIL_SOCKET_TIMEOUT, 10) || 10000,
     });
     console.log("Google SMTP email configured");
   } else if (process.env.NODE_ENV === "development") {
@@ -29,6 +34,12 @@ const initEmailService = async () => {
           user: testAccount.user,
           pass: testAccount.pass,
         },
+        // Prevent long waits if Ethereal isn't responding
+        connectionTimeout:
+          parseInt(process.env.EMAIL_CONNECTION_TIMEOUT, 10) || 10000,
+        greetingTimeout:
+          parseInt(process.env.EMAIL_GREETING_TIMEOUT, 10) || 5000,
+        socketTimeout: parseInt(process.env.EMAIL_SOCKET_TIMEOUT, 10) || 10000,
       });
 
       console.log("Ethereal email configured (fallback)");

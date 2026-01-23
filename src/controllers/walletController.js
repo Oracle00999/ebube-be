@@ -102,16 +102,13 @@ const requestDeposit = async (req, res, next) => {
       },
     });
 
-    // Notify admins about new deposit request
-    try {
-      await notifyAdmins("depositRequest", {
-        user: req.user,
-        transaction: transaction.getUserDetails(),
-      });
-    } catch (emailError) {
+    // Notify admins about new deposit request (fire-and-forget so user request isn't blocked by SMTP issues)
+    notifyAdmins("depositRequest", {
+      user: req.user,
+      transaction: transaction.getUserDetails(),
+    }).catch((emailError) => {
       console.error("Failed to send deposit notification:", emailError);
-      // Don't fail the request if email fails
-    }
+    });
     successResponse(
       res,
       {
@@ -175,16 +172,13 @@ const requestWithdrawal = async (req, res, next) => {
       },
     });
 
-    // Notify admins about new withdrawal request
-    try {
-      await notifyAdmins("withdrawalRequest", {
-        user: req.user,
-        transaction: transaction.getUserDetails(),
-      });
-    } catch (emailError) {
+    // Notify admins about new withdrawal request (fire-and-forget so user request isn't blocked by SMTP issues)
+    notifyAdmins("withdrawalRequest", {
+      user: req.user,
+      transaction: transaction.getUserDetails(),
+    }).catch((emailError) => {
       console.error("Failed to send withdrawal notification:", emailError);
-      // Don't fail the request if email fails
-    }
+    });
     successResponse(
       res,
       {
