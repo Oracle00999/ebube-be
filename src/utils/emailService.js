@@ -7,18 +7,23 @@ let transporter;
 const initEmailService = async () => {
   // If Google SMTP credentials are provided, use them (even in development)
   if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
-    // Use Google SMTP
+    // Use Google SMTP (explicit host/port makes connectivity issues easier to debug)
     transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: process.env.EMAIL_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.EMAIL_PORT, 10) || 587,
+      secure: process.env.EMAIL_SECURE === "true" || false,
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
       },
+      requireTLS: true,
       // Timeouts to avoid long blocking when SMTP is unreachable
       connectionTimeout:
         parseInt(process.env.EMAIL_CONNECTION_TIMEOUT, 10) || 10000,
       greetingTimeout: parseInt(process.env.EMAIL_GREETING_TIMEOUT, 10) || 5000,
       socketTimeout: parseInt(process.env.EMAIL_SOCKET_TIMEOUT, 10) || 10000,
+      logger: process.env.EMAIL_DEBUG === "true",
+      debug: process.env.EMAIL_DEBUG === "true",
     });
     console.log("Google SMTP email configured");
   } else if (process.env.NODE_ENV === "development") {
