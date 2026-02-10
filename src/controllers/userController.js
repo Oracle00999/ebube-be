@@ -28,8 +28,7 @@ const getUserById = async (req, res, next) => {
 // @access  Private/Admin
 const getAllUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
-    const skip = (page - 1) * limit;
+    const { search = "" } = req.query;
 
     // Build search query
     const searchQuery = search
@@ -44,27 +43,19 @@ const getAllUsers = async (req, res, next) => {
         }
       : {};
 
-    // Get users with pagination
+    // Get all users (no pagination)
     const users = await User.find(searchQuery)
       .select("-password")
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
       .populate("wallet", "totalValue");
 
-    // Get total count
-    const total = await User.countDocuments(searchQuery);
+    const total = users.length;
 
     successResponse(
       res,
       {
         users,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit),
-        },
+        total,
       },
       "Users retrieved successfully",
     );
