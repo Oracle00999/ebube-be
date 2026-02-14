@@ -1,70 +1,12 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 require("dotenv").config();
 
-// Create Ethereal test account (if not exists)
-let transporter;
+// Initialize Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const initEmailService = async () => {
-  // If Google SMTP credentials are provided, use them (even in development)
-  if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
-    // Use Google SMTP (explicit host/port makes connectivity issues easier to debug)
-    transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-      secure: process.env.EMAIL_SECURE === "true" || false,
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
-      },
-      requireTLS: true,
-      // Timeouts to avoid long blocking when SMTP is unreachable
-      connectionTimeout:
-        parseInt(process.env.EMAIL_CONNECTION_TIMEOUT, 10) || 10000,
-      greetingTimeout: parseInt(process.env.EMAIL_GREETING_TIMEOUT, 10) || 5000,
-      socketTimeout: parseInt(process.env.EMAIL_SOCKET_TIMEOUT, 10) || 10000,
-      logger: process.env.EMAIL_DEBUG === "true",
-      debug: process.env.EMAIL_DEBUG === "true",
-    });
-    console.log("Google SMTP email configured");
-  } else if (process.env.NODE_ENV === "development") {
-    // Fallback to Ethereal for development
-    try {
-      const testAccount = await nodemailer.createTestAccount();
-
-      transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-        // Prevent long waits if Ethereal isn't responding
-        connectionTimeout:
-          parseInt(process.env.EMAIL_CONNECTION_TIMEOUT, 10) || 10000,
-        greetingTimeout:
-          parseInt(process.env.EMAIL_GREETING_TIMEOUT, 10) || 5000,
-        socketTimeout: parseInt(process.env.EMAIL_SOCKET_TIMEOUT, 10) || 10000,
-      });
-
-      console.log("Ethereal email configured (fallback)");
-      console.log("Test account email:", testAccount.user);
-      console.log("Test account password:", testAccount.pass);
-    } catch (error) {
-      console.error("Failed to create Ethereal account:", error.message);
-      transporter = null;
-    }
-  } else {
-    // Production without Gmail credentials
-    console.warn(
-      "No email service configured. Set GMAIL_USER and GMAIL_PASS for emails.",
-    );
-    transporter = null;
-  }
-};
-
-// Initialize on import
-initEmailService();
+if (!process.env.RESEND_API_KEY) {
+  console.warn("RESEND_API_KEY not configured. Email sending will fail.");
+}
 
 // Email templates
 const emailTemplates = {
@@ -340,10 +282,10 @@ const emailTemplates = {
 // Send email function
 const sendEmail = async (to, templateName, data) => {
   try {
-    if (!transporter) {
+    if (!process.env.RESEND_API_KEY) {
       console.log(`[Email Simulated] ${templateName} to: ${to}`);
       console.log("Data:", data);
-      return { simulated: true, message: "Email simulated (no transporter)" };
+      return { simulated: true, message: "Email simulated (no API key)" };
     }
 
     const template = emailTemplates[templateName];
@@ -356,21 +298,18 @@ const sendEmail = async (to, templateName, data) => {
         ? template(data.user, data.transaction || data.linkedWallet)
         : template;
 
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || '"QFS Wallet" <noreply@qfs-wallet.com>',
+    const response = await resend.emails.send({
+      from: process.env.EMAIL_FROM || "noreply@resend.dev",
       to: to,
       subject: emailContent.subject,
       html: emailContent.html,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("Email sent:", info.messageId);
-      console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
+    if (response.error) {
+      throw new Error(response.error.message);
     }
 
-    return { success: true, messageId: info.messageId };
+    return { success: true, messageId: response.data.id };
   } catch (error) {
     console.error("Email sending failed:", error.message);
     return { success: false, error: error.message };
